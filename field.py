@@ -112,9 +112,37 @@ class Field(object):
         self.renderers.append(renderer)
         renderer.update_bounds(self.bounds)
         renderer.update_field(self.fieldset)
+        renderer.add_actions(frozenset(), self.signals)
+
+def field_to_stringlist(bounds, fields, signals):
+    #fields_list = list(fields)
+    # sort by x, then by y
+    # so we will have fields grouped into rows, sorted by x value
+    """fields_list.sort(key=lambda f: f[0])
+    fields_list.sort(key=lambda f: f[1])
+
+    signals_list = list(signals)
+    signals_list.sort(key=lambda s: s[0])
+    signals_list.sort(key=lambda s: s[1])"""
+
+    chars = []
+
+    # most naive implementation i can come up with right now.
+    for x in range(0, bounds.r - bounds.l):
+        for y in range(0, bounds.d - bounds.u):
+            if (x, y) in fields:
+                if (x, y) in signals:
+                    chars.append("O")
+                else:
+                    chars.append("_")
+            else:
+                chars.append(" ")
+        chars.append("\n")
+
+    return "".join(chars)
 
 class RendererBase(object):
-    def __init__(self):
+    def __init__(self, *args):
         """initialise the renderer with some state"""
 
     def update_bounds(self, newbounds):
@@ -125,7 +153,7 @@ class RendererBase(object):
 
     def add_actions(self, removals, additions):
         """add removals and additions to render in the near future"""
-        
+
     def is_picture_dirty(self):
         """returns if the image is dirty"""
 
