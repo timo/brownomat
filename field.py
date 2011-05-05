@@ -14,7 +14,7 @@ u = pos_adder(0, -1)
 
 def action_possible(pos, sis, fs):
     """ action_possible(position, signals, fieldset)
-          => [((rx, ry), (ax, ay))]
+          => ([(r1x, r1y), ...], [(a1x, a1y), ...])
 
     determine if this field can do an action and, if it can, return
     a list of tuples (a, b) where a is the signal to replace and b is the
@@ -59,7 +59,7 @@ def action_possible(pos, sis, fs):
     elif reflect and signum == 1:
         return [(signals[0], reflected[0])]
     elif rotate and signum == 2:
-        return [(signals[i], reflected[i]) for i in range(2)]
+        return ([signals[i] for i in range(2)], [reflected[i] for i in range(2)])
 
 class Field(object):
     fieldset = frozenset()
@@ -80,3 +80,15 @@ class Field(object):
                     fieldelems.append(x, y)
 
         self.fieldset = frozenset(fieldelems)
+        
+    def step(self, steps=1):
+        for step in range(steps):
+            signal = choice(self.signals)
+            possibilities = sum(
+                [action_possible(f(signal), self.signals, self.fieldset)
+                 for f in [u, d, l, r]], [])
+
+            action = choice(possibilities)
+
+            self.signals -= frozenset(action[0])
+            self.signals += frozenset(action[1])
