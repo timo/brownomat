@@ -15,8 +15,8 @@ d = pos_adder(0, 1)
 l = pos_adder(-1, 0)
 u = pos_adder(0, -1)
 
-def action_possible(pos, sis, fs):
-    """ action_possible(position, signals, fieldset)
+def _action_possible(pos, sis, fs):
+    """ _action_possible(position, signals, fieldset)
           => ([(r1x, r1y), ...], [(a1x, a1y), ...])
 
     determine if this field can do an action and, if it can, return
@@ -68,6 +68,7 @@ class Field(object):
     fieldset = frozenset()
     signals = []
     bounds = BBox(0, 0, 1, 1)
+    renderers = []
     def __init__(self, data=None, filename=None):
         if filename:
             data = open(filename).read()
@@ -97,10 +98,36 @@ class Field(object):
         for step in range(steps):
             signal = choice(self.signals)
             possibilities = sum(
-                [action_possible(f(signal), self.signals, self.fieldset)
+                [_action_possible(f(signal), self.signals, self.fieldset)
                  for f in [u, d, l, r]], [])
 
             action = choice(possibilities)
 
             self.signals -= frozenset(action[0])
             self.signals += frozenset(action[1])
+
+            self.renderers.add_actions(*action)
+
+    def attach_renderer(self, renderer):
+        self.renderers.append(renderer)
+        renderer.update_bounds(self.bounds)
+        renderer.update_field(self.fieldset)
+
+class RendererBase(object):
+    def __init__(self):
+        """initialise the renderer with some state"""
+
+    def update_bounds(self, newbounds):
+        """update the size of the canvas"""
+
+    def update_field(self, fieldset):
+        """update the set of fields"""
+
+    def add_actions(self, removals, additions):
+        """add removals and additions to render in the near future"""
+        
+    def is_picture_dirty(self):
+        """returns if the image is dirty"""
+
+    def refresh_picture(self):
+        """refresh the picture somehow"""
