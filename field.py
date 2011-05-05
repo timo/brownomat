@@ -1,9 +1,12 @@
 from random import choice
+from collections import namedtuple
 
 def iterate(iterable):
     num = 0
     for item in iterable:
         yield num, item
+
+BBox = namedtuple("BBox", "l, u, r, d")
 
 pos_adder = lambda posx, posy: lambda (x, y): (posx + x, posy + y)
 
@@ -64,6 +67,7 @@ def action_possible(pos, sis, fs):
 class Field(object):
     fieldset = frozenset()
     signals = []
+    bounds = BBox(0, 0, 1, 1)
     def __init__(self, data=None, filename=None):
         if filename:
             data = open(filename).read()
@@ -78,9 +82,17 @@ class Field(object):
                     char = "_"
                 if char == "_":
                     fieldelems.append(x, y)
+                    if x < self.bounds.l:
+                        self.bounds.l = x
+                    elif x > self.bounds.r:
+                        self.bounds.r = x
+                    if y < self.bounds.u:
+                        self.bounds.u = y
+                    elif y > self.bounds.d:
+                        self.bounds.d = y
 
         self.fieldset = frozenset(fieldelems)
-        
+
     def step(self, steps=1):
         for step in range(steps):
             signal = choice(self.signals)
