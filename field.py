@@ -27,7 +27,7 @@ def action_possible(pos, sis, fs):
     ud = u(pos) in fs and d(pos) in fs
     lr = l(pos) in fs and r(pos) in fs
     # determine our own type
-    if pos in fs:
+    if same:
         # line?
         if ud ^ lr:
             # we have a line.
