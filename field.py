@@ -26,14 +26,20 @@ def _action_possible(pos, sis, fs):
     absorb = False
     reflect = False
     rotate = False
+    
+    if pos in sis:
+        # never operate on the field that a signal is in.
+        return None
 
     same = pos in fs
     ud = u(pos) in fs and d(pos) in fs
     lr = l(pos) in fs and r(pos) in fs
+    uod = u(pos) in fs or d(pos) in fs
+    lor = l(pos) in fs or r(pos) in fs
     # determine our own type
     if same:
         # line?
-        if ud ^ lr:
+        if (ud and not lor) or (lr and not uod):
             # we have a line.
             absorb = True
         elif ud and lr:
@@ -54,16 +60,17 @@ def _action_possible(pos, sis, fs):
     signum = sum([f(pos) in sis for f in [u, d, l, r]])
     signals = [f(pos) for f in [u, d, l, r] if f(pos) in sis]
     reflected = [f(pos) for f, g
-                 in [(u, d), (d, u), (l, r), (r, l)]
+                 in [(u, l), (d, r), (l, d), (r, u)]
                  if g(pos) in sis]
 
     if absorb and signum == 1:
         # remove the found signal and replace it with our current position
-        return ([signals[0]], [pos])
+        return ([signals[0]], [pos], absorb, signum)
     elif reflect and signum == 1:
-        return ([signals[0]], [reflected[0]])
+        return ([signals[0]], [reflected[0]], reflect, signum)
     elif rotate and signum == 2:
-        return ([signals[i] for i in range(2)], [reflected[i] for i in range(2)])
+        print "rotate was true!"
+        return ([signals[i] for i in range(2)], [reflected[i] for i in range(2)], rotate, signum)
 
 class Field(object):
     fieldset = frozenset()
@@ -102,9 +109,9 @@ class Field(object):
         self.fieldset = frozenset(fieldelems)
 
     def step(self, steps=1):
-        print "\n".join(field_to_stringlist(self.bounds, self.fieldset, self.signals))
-        print
-        print
+        #print "\n".join(field_to_stringlist(self.bounds, self.fieldset, self.signals))
+        #print
+        #print
         overflow = 0
         while steps > 0 and overflow < 1000:
             signal = choice(self.signals)
@@ -120,10 +127,22 @@ class Field(object):
                 steps -= 1
             action = choice(possibilities)
             
+            before_count = len(self.signals)
+
             self.signals = set(self.signals) - frozenset(action[0])
             self.signals = self.signals | frozenset(action[1])
             self.signals = list(self.signals)
+            
+            after_count = len(self.signals)
 
+            if after_count != before_count:
+                print "\n".join(field_to_stringlist(self.bounds, self.fieldset, self.signals))
+                print
+                print action
+                raise Exception("this action just changed the number of signals.")
+
+
+            action = action[:2]
             for renderer in self.renderers:
                 renderer.add_actions(*action)
 

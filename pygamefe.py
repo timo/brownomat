@@ -1,6 +1,7 @@
 #!/usr/bin/env/python
 import pygame
 import field
+from time import sleep
 
 class PyGameSurfaceRenderer(field.RendererBase):
     bgcol = pygame.Color("white")
@@ -60,10 +61,33 @@ class PyGameSurfaceRenderer(field.RendererBase):
         self.nice_redraw = False
 
 testfielddata = """
-          __    __
- __O____O______________O______O__
-          _      _
-
+          __    __               __
+ __O____O______________O______O_____
+          _     _                ___
+                                  _
+                                  _
+                             __  ___
+                     _______________
+                              _  __
+          _
+          _    _
+  _O___O___O______    __
+          _    ________________
+          _    ___    _
+  _O______________      __
+          _    _________________
+          _      _      _
+          _
+          _
+          _
+         ___
+        _ _ _
+     O____ _____O
+        _ _ _
+         ___
+          _
+          _
+          _
 
 """
 
@@ -88,6 +112,7 @@ class PyGameFrontend(object):
                 self.screen.blit(self.renderer.resultsurf, (20, 20))
 
             pygame.display.flip()
+            #sleep(0.001)
 
 
 if __name__ == "__main__":
