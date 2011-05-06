@@ -101,8 +101,8 @@ class Field(object):
                 y = py + yo
                 if char == "O":
                     self.signals.append((x, y))
-                    char = "_"
-                if char == "_":
+                    char = "#"
+                if char == "#":
                     fieldelems.append((x, y))
                     if x < l:
                         l = x
