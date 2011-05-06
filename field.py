@@ -60,6 +60,9 @@ def _action_possible(pos, sis, fs):
     signum = sum([f(pos) in sis for f in [u, d, l, r]])
     signals = [f(pos) for f in [u, d, l, r] if f(pos) in sis]
     reflected = [f(pos) for f, g
+                 in [(u, d), (d, u), (l, r), (r, l)]
+                 if g(pos) in sis]
+    rotated = [f(pos) for f, g
                  in [(u, l), (d, r), (l, d), (r, u)]
                  if g(pos) in sis]
 
@@ -69,8 +72,7 @@ def _action_possible(pos, sis, fs):
     elif reflect and signum == 1:
         return ([signals[0]], [reflected[0]], reflect, signum)
     elif rotate and signum == 2:
-        print "rotate was true!"
-        return ([signals[i] for i in range(2)], [reflected[i] for i in range(2)], rotate, signum)
+        return ([signals[i] for i in range(2)], [rotated[i] for i in range(2)], rotate, signum)
 
 class Field(object):
     fieldset = frozenset()
@@ -93,7 +95,6 @@ class Field(object):
                     char = "_"
                 if char == "_":
                     fieldelems.append((x, y))
-                    print x,y
                     if x < l:
                         l = x
                     elif x > r:
@@ -104,7 +105,6 @@ class Field(object):
                         d = y
 
         self.bounds = BBox(l=l, r=r, u=u, d=d)
-        print self.bounds
 
         self.fieldset = frozenset(fieldelems)
 
