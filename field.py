@@ -72,9 +72,6 @@ def _action_possible(pos, sis, fs):
     elif reflect and signum == 1:
         return ([signals[0]], [reflected[0]])
     elif rotate and signum == 2:
-        print signals
-        print reflected
-        print
         if signals[0] != reflected[0]:
             # the signals must face each other.
             return None
