@@ -108,7 +108,7 @@ c22join = """
 _____________     ____________
        _ _ _       _ _ _
      __ ___         ___ __  
-___________         __________
+__O________         __________
      _  ___         ___  _  
        _ _ _       _ _ _    
 _____________     ____________
@@ -121,7 +121,7 @@ _____________     ____________
             _ ___ _
             _  _  _
             _  _  _
-            _  _  _
+            _  O  _
             _  _  _
 
 """
@@ -132,6 +132,7 @@ class PyGameFrontend(object):
         pygame.display.init()
         self.screen = pygame.display.set_mode((800, 600))
         self.field = field.Field(data=testfielddata)
+        self.field.read_data(c22join, offset=(20, 15))
         self.renderer = PyGameSurfaceRenderer()
         self.field.attach_renderer(self.renderer)
 

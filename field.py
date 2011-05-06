@@ -85,14 +85,20 @@ class Field(object):
     def __init__(self, data=None, filename=None):
         if filename:
             data = open(filename).read()
+        self.read_data(data)
+
+    def read_data(self, data, offset=(0, 0)):
+        xo, yo = offset
         self.field = data.split("\n")
 
         fieldelems = []
-        
-        l, r, u, d = 0, 0, 1, 1
 
-        for y, line in iterate(self.field):
-            for x, char in iterate(line):
+        l, u, r, d = self.bounds
+
+        for py, line in iterate(self.field):
+            for px, char in iterate(line):
+                x = px + xo
+                y = py + yo
                 if char == "O":
                     self.signals.append((x, y))
                     char = "_"
@@ -109,7 +115,8 @@ class Field(object):
 
         self.bounds = BBox(l=l, r=r, u=u, d=d)
 
-        self.fieldset = frozenset(fieldelems)
+        self.fieldset = frozenset(self.fieldset.union(fieldelems))
+
 
     def step(self, steps=1):
         #print "\n".join(field_to_stringlist(self.bounds, self.fieldset, self.signals))
