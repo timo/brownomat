@@ -68,11 +68,17 @@ def _action_possible(pos, sis, fs):
 
     if absorb and signum == 1:
         # remove the found signal and replace it with our current position
-        return ([signals[0]], [pos], absorb, signum)
+        return ([signals[0]], [pos])
     elif reflect and signum == 1:
-        return ([signals[0]], [reflected[0]], reflect, signum)
+        return ([signals[0]], [reflected[0]])
     elif rotate and signum == 2:
-        return ([signals[i] for i in range(2)], [rotated[i] for i in range(2)], rotate, signum)
+        print signals
+        print reflected
+        print
+        if signals[0] != reflected[0]:
+            # the signals must face each other.
+            return None
+        return ([signals[i] for i in range(2)], [rotated[i] for i in range(2)])
 
 class Field(object):
     fieldset = frozenset()
