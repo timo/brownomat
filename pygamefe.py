@@ -118,6 +118,8 @@ class PyGameFrontend(object):
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         pause = not pause
+                    elif event.key == pygame.K_r:
+                        self.field.reset()
             if not pause:
                 self.field.step()
             if self.renderer.is_picture_dirty():

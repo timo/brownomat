@@ -96,6 +96,7 @@ class Field(object):
     fieldset = frozenset()
     fields = defaultdict(lambda: None)
     signals = []
+    start_out_signals = []
     labels = {}
     bounds = BBox(0, 0, 1, 1)
     renderers = []
@@ -105,6 +106,13 @@ class Field(object):
         if filename:
             data = open(filename).read()
         self.read_data(data)
+
+    def reset(self):
+        for renderer in self.renderers:
+            renderer.add_actions(self.signals, self.start_out_signals)
+        self.signals = self.start_out_signals
+        for renderer in self.renderers:
+            renderer.reset()
 
     def read_data(self, data, offset=(0, 0)):
         xo, yo = offset
@@ -172,6 +180,7 @@ class Field(object):
                     break
 
         self.update_fieldtypes()
+        self.start_out_signals = self.signals[:]
 
     def update_fieldtypes(self):
         self.fields = defaultdict(lambda: None)
@@ -272,6 +281,9 @@ class RendererBase(object):
     def update_bounds(self, newbounds):
         """update the size of the canvas"""
 
+    def update_labels(self, labels):
+        """update the labels"""
+
     def update_field(self, fieldset):
         """update the set of fields"""
 
@@ -283,6 +295,12 @@ class RendererBase(object):
 
     def refresh_picture(self):
         """refresh the picture somehow"""
+
+    def reset(self):
+        """the field has been reset
+
+        this will be called after add_action has been called with all old
+        and new signal positions."""
 
 if __name__ == "__main__":
     import field_data
