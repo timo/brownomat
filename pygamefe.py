@@ -2,6 +2,7 @@
 import pygame
 import field
 from time import sleep
+from math import log
 
 class PyGameSurfaceRenderer(field.RendererBase):
     bgcol = pygame.Color("white")
@@ -185,18 +186,23 @@ class PyGameFrontend(object):
 
     def mainloop(self):
         running = True
+        pause = False
 
         while running:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-            self.field.step()
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        pause = not pause
+            if not pause:
+                self.field.step()
             if self.renderer.is_picture_dirty():
                 self.renderer.refresh_picture()
                 self.screen.blit(self.renderer.resultsurf, (20, 20))
 
             pygame.display.flip()
-            #sleep(0.001)
+            sleep(log(pygame.mouse.get_pos()[1] / 300. + 1))
 
 
 if __name__ == "__main__":
