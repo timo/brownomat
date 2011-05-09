@@ -107,6 +107,9 @@ class Field(object):
             data = open(filename).read()
         self.read_data(data)
 
+    def __str__(self):
+        return "\n".join(field_to_stringlist(self.bounds, self.fieldset, self.signals, self.labels))
+
     def reset(self):
         for renderer in self.renderers:
             renderer.add_actions(self.signals, self.start_out_signals)
@@ -161,6 +164,8 @@ class Field(object):
                         label = label[:-1]
                         out = True
                     labels.append(((px, py), label, out))
+                    if x + len(label) > bound_r:
+                        bound_r = x + len(label)
 
         self.bounds = BBox(l=bound_l, r=bound_r, u=bound_u, d=bound_d)
 
@@ -238,7 +243,7 @@ class Field(object):
         renderer.update_field(self.fieldset)
         renderer.add_actions(frozenset(), self.signals)
 
-def field_to_stringlist(bounds, fields, signals):
+def field_to_stringlist(bounds, fields, signals, labels={}):
     #fields_list = list(fields)
     # sort by x, then by y
     # so we will have fields grouped into rows, sorted by x value
@@ -268,10 +273,13 @@ def field_to_stringlist(bounds, fields, signals):
 
     # even more naive.
     for x, y in fields:
-        result[y - bounds.u][x - bounds.l] = "_"
+        result[y - bounds.u][x - bounds.l] = "#"
     for x, y in signals:
         result[y - bounds.u][x - bounds.l] = "O"
-    
+    for (label, (pos, tgt, out)) in labels.iteritems():
+        for cp in range(len(label)):
+            result[pos[1]][pos[0] + cp] = label[cp]
+
     return ["".join(a) for a in result]
 
 class RendererBase(object):
@@ -328,4 +336,8 @@ if __name__ == "__main__":
 
     testfield = Field(data=field_data.xor_drjoin)
     testfield.attach_renderer(OutputSignalNotifier())
-    testfield.step(1000000)
+    try:
+        testfield.step(1000000)
+    except KeyboardInterrupt:
+        print(testfield)
+        raise
