@@ -3,6 +3,7 @@ import pygame
 import field
 from time import sleep
 from math import log
+import field_data
 
 class PyGameSurfaceRenderer(field.RendererBase):
     bgcol = pygame.Color("white")
@@ -61,118 +62,6 @@ class PyGameSurfaceRenderer(field.RendererBase):
         self.additions = set()
         self.nice_redraw = False
 
-testfielddata = """\
-          ##    ##               ##
- ##O####O##############O######O#####
-          #     #                ###
-                                  #
-                                  #
-          #                  ##  ###
-          #          ###############
-         ##                   #  ##
-         ###
-          #    #
-  #O###O###O######    ##
-          #    #############
-          #    ###    #
-  #O###O##########      ##
-          #    #################
-          #      #      #
-          #
-          #
-          #
-         ###
-        # # #   ##
-   O#O#### ###O####
-        # # #   ###
-         ###     #
-          #     ##
-          #     ###
-          #      #
-         ###    ###
-         ##########
-          ##    ##
-"""
-
-c22join = """\
-            #  #  #
-            #  #  #
-            #  #  #
-            #  #  #
-            # ### #
-           ##  ## ##
-           ### # ###
-          # # ### # #
-         ### ##### ###
-        ### # ### # ###
-      ## # ###   ### # ##
-#############     ############
-       # # #       # # #
-     ## ###         ### ##  
-##O########         ##########
-     #  ###         ###  #  
-       # # #       # # #    
-#############     ############
-      ## # ###   ### # ##
-        ### # ### # ###
-         ### ##### ###
-          # # ### # #
-           ### # ###
-           ##  ## ##
-            # ### #
-            #  #  #
-            #  #  #
-            #  O  #
-            #  #  #
-
-"""
-
-drjoin = """\
-             c     r     d
-             #     #     #
-             #     #     #
-             #     #     #
- a    #  ### # ### # ### # ###  #    b
-############# ##### ##### ##############
-      ## ### # ### # ### # ### ##
-#################  #  ##################
- a'   #  ### ###   #   ### ###  #    b'
-             #     #     #
-             #     #     #
-             c'    r'    d'
-"""
-
-# r merge d' merge c = c'
-# c' merge d = c0
-# r' = c1
-
-# a0 -> a
-# a1 -> b
-# b0 -> a'
-# b1 -> b'
-
-xor_drjoin = """\
-
-             #     #     #
-             #     #     #   #########O###
-             #     #     #
-         ### # ### #     #
-         #### #### #     #
-      #  ### # ### # ### # ###  #
-#####O###### # #### ##### #########O####
-      ## ### # ### # ### # ### ##
-#####O###########  #  ##############O###
-      #  ### ###   #   ### ###  #
-             #     #     #
-             #     #     #
-             #     #     #
-             #     #    ###
-             #     #    ##
-             #     #     #
-             #     #     #
-
-"""
-
 class PyGameFrontend(object):
     def __init__(self):
         pygame.display.init()
@@ -180,7 +69,7 @@ class PyGameFrontend(object):
         self.setup_field()
 
     def setup_field(self):
-        self.field = field.Field(data=xor_drjoin)
+        self.field = field.Field(data=field_data.xor_drjoin)
         self.renderer = PyGameSurfaceRenderer()
         self.field.attach_renderer(self.renderer)
 

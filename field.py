@@ -154,7 +154,7 @@ class Field(object):
             self.signals = set(self.signals) - frozenset(action[0])
             self.signals = self.signals | frozenset(action[1])
             self.signals = list(self.signals)
-            
+
             after_count = len(self.signals)
 
             if after_count != before_count:
