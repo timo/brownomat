@@ -129,6 +129,13 @@ class Field(object):
         self.fields = defaultdict(lambda: None)
         for field in self.fieldset:
             self.fields[field] = _field_type(field, self.fieldset)
+            
+            # also catch empty fields that are surrounded by other fields.
+            # we can choose an arbitrary direction for all fields, that we look for
+            # empty, surrounded fields in.
+            if r(field) not in self.fieldset:
+                if _field_type(r(field), self.fieldset) == "rotate":
+                    self.fields[r(field)] = "rotate"
 
     def step(self, steps=1):
         #print "\n".join(field_to_stringlist(self.bounds, self.fieldset, self.signals))
