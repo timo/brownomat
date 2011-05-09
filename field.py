@@ -320,11 +320,15 @@ if __name__ == "__main__":
     class OutputSignalNotifier(RendererBase):
         activation = lambda: None
         labels = {}
+        triggered = []
+        inputs = []
+        results = []
         def __init__(self):
             self.step = 0
             self.signals = 0
 
         def reset(self, inputs):
+            self.inputs = inputs
             self.step = 0
             self.signals = len(inputs)
             self.update_labels(self.all_labels)
@@ -335,15 +339,17 @@ if __name__ == "__main__":
                 if out:
                     self.labels[tgtpos] = name
             self.all_labels = labels.copy()
+            self.triggered = []
 
         def add_actions(self, removals, additions):
             self.step += 1
             for pos in additions:
                 if pos in self.labels:
-                    print("%10d activated label %s" % (self.step, self.labels[pos]))
+                    self.triggered.append(self.labels[pos])
                     del self.labels[pos]
                     self.signals -= 1
                     if self.signals == 0:
+                        self.results.append((self.step, self.inputs, self.triggered))
                         self.activation()
 
     testfield = Field(data=field_data.xor_drjoin)
@@ -359,3 +365,18 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print(testfield)
         raise
+    finally:
+        times = {}
+        rounds = {}
+        results = {}
+        for (time, inputs, outputs) in notifier.results:
+            inputs = tuple(inputs)
+            times[inputs] = times.get(inputs, 0) + time * 1.0
+            rounds[inputs] = rounds.get(inputs, 0) + 1
+
+        rounds_sum = 0
+        for key in times.iterkeys():
+            results[key] = times[key] / rounds[key]
+            rounds_sum += rounds[key]
+
+        print(results, " - ", rounds_sum, "rounds.")
