@@ -176,8 +176,10 @@ class PyGameFrontend(object):
     def __init__(self):
         pygame.display.init()
         self.screen = pygame.display.set_mode((800, 600))
-        self.field = field.Field(data=testfielddata)
-        self.field.read_data(c22join, offset=(20, 15))
+        self.setup_field()
+
+    def setup_field(self):
+        self.field = field.Field(data=xor_drjoin)
         self.renderer = PyGameSurfaceRenderer()
         self.field.attach_renderer(self.renderer)
 
