@@ -57,7 +57,7 @@ def _action_possible(pos, sis, fs):
             # this field is utterly irrelevant
             return None
 
-    signum = sum([f(pos) in sis for f in [u, d, l, r]])
+    sig_count = sum([f(pos) in sis for f in [u, d, l, r]])
     signals = [f(pos) for f in [u, d, l, r] if f(pos) in sis]
     reflected = [f(pos) for f, g
                  in [(u, d), (d, u), (l, r), (r, l)]
@@ -66,12 +66,12 @@ def _action_possible(pos, sis, fs):
                  in [(u, l), (d, r), (l, d), (r, u)]
                  if g(pos) in sis]
 
-    if absorb and signum == 1:
+    if absorb and sig_count == 1:
         # remove the found signal and replace it with our current position
         return ([signals[0]], [pos])
-    elif reflect and signum == 1:
+    elif reflect and sig_count == 1:
         return ([signals[0]], [reflected[0]])
-    elif rotate and signum == 2:
+    elif rotate and sig_count == 2:
         if signals[0] != reflected[0]:
             # the signals must face each other.
             return None
