@@ -3,7 +3,6 @@ from __future__ import print_function
 import pygame
 import field
 from time import sleep
-from math import log
 import field_data
 
 pxs = 10
@@ -125,7 +124,7 @@ class PyGameFrontend(object):
                 self.screen.blit(self.renderer.resultsurf, (20, 20))
 
             pygame.display.flip()
-            sleep(log(pygame.mouse.get_pos()[1] / 300. + 1))
+            sleep(((pygame.mouse.get_pos()[1] + 1) / 600.) ** 2)
 
 
 if __name__ == "__main__":
