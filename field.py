@@ -231,3 +231,8 @@ class RendererBase(object):
 
     def refresh_picture(self):
         """refresh the picture somehow"""
+
+if __name__ == "__main__":
+    import field_data
+    testfield = Field(data=field_data.c22join)
+    testfield.step(1000000)
