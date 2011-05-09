@@ -1,5 +1,5 @@
 from random import choice
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 
 def iterate(iterable):
     num = 0
@@ -16,46 +16,51 @@ d = pos_adder(0, 1)
 l = pos_adder(-1, 0)
 u = pos_adder(0, -1)
 
-def _action_possible(pos, sis, fs):
+def _field_type(pos, fieldset):
+    """ _field_type(position, fieldset)
+       => "absorb", "reflect", "rotate", None
+
+    calculate what kinds of action a fieldset can potentially do."""
+
+    same = pos in fieldset
+    ud = u(pos) in fieldset and d(pos) in fieldset
+    lr = l(pos) in fieldset and r(pos) in fieldset
+    uod = u(pos) in fieldset or d(pos) in fieldset
+    lor = l(pos) in fieldset or r(pos) in fieldset
+    # determine our own type
+    if same:
+        # line?
+        if (ud and not lor) or (lr and not uod):
+            # we have a line.
+            return "absorb"
+        elif ud and lr:
+            # we have a fully surrounded fieldset
+            return "reflect"
+        else:
+            # this fieldset is utterly irrelevant
+            return None
+    else:
+        if ud & lr:
+            # we have a fully surrounded, but
+            # with an emptyness in the middle
+            return "rotate"
+        else:
+            # this fieldset is utterly irrelevant
+            return None
+
+def _action_possible(pos, sis, ftype):
     """ _action_possible(position, signals, fieldset)
           => ([(r1x, r1y), ...], [(a1x, a1y), ...])
 
     determine if this field can do an action and, if it can, return
     a list of tuples (a, b) where a is the signal to replace and b is the
     new signal to set instead."""
-    absorb = False
-    reflect = False
-    rotate = False
-    
+
     if pos in sis:
         # never operate on the field that a signal is in.
         return None
-
-    same = pos in fs
-    ud = u(pos) in fs and d(pos) in fs
-    lr = l(pos) in fs and r(pos) in fs
-    uod = u(pos) in fs or d(pos) in fs
-    lor = l(pos) in fs or r(pos) in fs
-    # determine our own type
-    if same:
-        # line?
-        if (ud and not lor) or (lr and not uod):
-            # we have a line.
-            absorb = True
-        elif ud and lr:
-            # we have a fully surrounded field
-            reflect = True
-        else:
-            # this field is utterly irrelevant
-            return None
-    else:
-        if ud & lr:
-            # we have a fully surrounded, but
-            # with an emptyness in the middle
-            rotate = True
-        else:
-            # this field is utterly irrelevant
-            return None
+    elif ftype == None:
+        return None
 
     sig_count = sum([f(pos) in sis for f in [u, d, l, r]])
     signals = [f(pos) for f in [u, d, l, r] if f(pos) in sis]
@@ -66,12 +71,12 @@ def _action_possible(pos, sis, fs):
                  in [(u, l), (d, r), (l, d), (r, u)]
                  if g(pos) in sis]
 
-    if absorb and sig_count == 1:
+    if ftype == "absorb" and sig_count == 1:
         # remove the found signal and replace it with our current position
         return ([signals[0]], [pos])
-    elif reflect and sig_count == 1:
+    elif ftype == "reflect" and sig_count == 1:
         return ([signals[0]], [reflected[0]])
-    elif rotate and sig_count == 2:
+    elif ftype == "rotate" and sig_count == 2:
         if signals[0] != reflected[0]:
             # the signals must face each other.
             return None
@@ -79,6 +84,7 @@ def _action_possible(pos, sis, fs):
 
 class Field(object):
     fieldset = frozenset()
+    fields = defaultdict(lambda: None)
     signals = []
     bounds = BBox(0, 0, 1, 1)
     renderers = []
@@ -117,6 +123,12 @@ class Field(object):
 
         self.fieldset = frozenset(self.fieldset.union(fieldelems))
 
+        self.update_fieldtypes()
+
+    def update_fieldtypes(self):
+        self.fields = defaultdict(lambda: None)
+        for field in self.fieldset:
+            self.fields[field] = _field_type(field, self.fieldset)
 
     def step(self, steps=1):
         #print "\n".join(field_to_stringlist(self.bounds, self.fieldset, self.signals))
@@ -126,7 +138,7 @@ class Field(object):
         while steps > 0 and overflow < 1000:
             signal = choice(self.signals)
             possibilities = sum(
-                [[_action_possible(f(signal), self.signals, self.fieldset)]
+                [[_action_possible(f(signal), self.signals, self.fields[f(signal)])]
                  for f in [u, d, l, r]], [])
             possibilities = [p for p in possibilities if p]
 
@@ -136,7 +148,7 @@ class Field(object):
             else:
                 steps -= 1
             action = choice(possibilities)
-            
+
             before_count = len(self.signals)
 
             self.signals = set(self.signals) - frozenset(action[0])
