@@ -36,8 +36,8 @@ class PyGameSurfaceRenderer(field.RendererBase):
                     pygame.Rect(*self.__adjust((x * 10, y * 10)) + (10, 10)))
 
     def add_actions(self, removals, additions):
-        if len(set(removals) & self.additions) > 0:
-            self.nice_redraw = True
+        #if len(set(removals) & self.additions) > 0:
+        self.nice_redraw = True
 
         self.removals = self.removals.difference(additions)
         self.additions = self.additions.difference(removals)
