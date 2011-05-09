@@ -1,3 +1,4 @@
+from __future__ import print_function
 from random import choice
 from collections import namedtuple, defaultdict
 
@@ -165,9 +166,9 @@ class Field(object):
             after_count = len(self.signals)
 
             if after_count != before_count:
-                print "\n".join(field_to_stringlist(self.bounds, self.fieldset, self.signals))
-                print
-                print action
+                print("\n".join(field_to_stringlist(self.bounds, self.fieldset, self.signals)))
+                print()
+                print(action)
                 raise Exception("this action just changed the number of signals.")
 
 

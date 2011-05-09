@@ -1,4 +1,5 @@
 #!/usr/bin/env/python
+from __future__ import print_function
 import pygame
 import field
 from time import sleep
@@ -22,7 +23,7 @@ class PyGameSurfaceRenderer(field.RendererBase):
         self.update_field(frozenset())
 
     def update_bounds(self, bounds):
-        print "update bounds:", bounds
+        print("update bounds:", bounds)
         self.bounds = bounds
         self.bgsurf = pygame.Surface(
                 ((bounds.r - bounds.l)*10 + 10, (bounds.d - bounds.u)*10 + 10))
