@@ -12,7 +12,8 @@ class PyGameSurfaceRenderer(field.RendererBase):
     fieldcol = pygame.Color("gray")
     signalcol = pygame.Color("black")
     fontcol = pygame.Color("black")
-    indicatorcol = pygame.Color("red")
+    incol = pygame.Color("red")
+    outcol = pygame.Color("blue")
 
     def __adjust(self, (x, y)):
         return (x - self.bounds.l * pxs, y - self.bounds.u * pxs)
@@ -50,7 +51,7 @@ class PyGameSurfaceRenderer(field.RendererBase):
             self.bgsurf.fill(self.fieldcol,
                     pygame.Rect(*self.__adjust((x * pxs, y * pxs)) + (pxs, pxs)))
 
-        for (label, (pos, tgtpos)) in self.labels.iteritems():
+        for (label, (pos, tgtpos, out)) in self.labels.iteritems():
             fontsurf = self.font.render(label, True, self.fontcol)
             self.bgsurf.blit(fontsurf, (pos[0] * pxs, pos[1] * pxs))
             xdiff = pos[0] - tgtpos[0]
@@ -60,7 +61,7 @@ class PyGameSurfaceRenderer(field.RendererBase):
                 tgtpos[1] * pxs + (pxs * 0.8 if ydiff > 0 else 0),
                 pxs * (0.2 if xdiff != 0 else 1),
                 pxs * (0.2 if ydiff != 0 else 1))
-            self.bgsurf.fill(self.indicatorcol, dr)
+            self.bgsurf.fill(self.outcol if out else self.incol, dr)
 
         self.resultsurf = self.bgsurf.copy()
 

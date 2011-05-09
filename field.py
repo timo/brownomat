@@ -142,30 +142,34 @@ class Field(object):
                 elif char in string.lowercase or char in string.uppercase:
                     linerest = line[px:]
                     label = ""
+                    out = False
                     for char in linerest:
-                        if char in string.lowercase + string.uppercase + string.digits + "'":
+                        if char in string.lowercase + string.uppercase + string.digits + "'.":
                             label += char
                         else:
                             break
                     inside_label = len(label)
-                    labels.append(((px, py), label))
+                    if label.endswith("."):
+                        label = label[:-1]
+                        out = True
+                    labels.append(((px, py), label, out))
 
         self.bounds = BBox(l=bound_l, r=bound_r, u=bound_u, d=bound_d)
 
         self.fieldset = frozenset(self.fieldset.union(fieldelems))
 
-        for (pos, label) in labels:
+        for (pos, label, out) in labels:
             # find the nearest piece of wire.
-            for direction in [u, lambda pos: l(l(pos)), d]:
+            for direction in [u, l, d]:
                 if direction(pos) in self.fieldset:
-                    self.labels[label] = (pos, direction(pos))
+                    self.labels[label] = (pos, direction(pos), out)
                     break
             npos = r(pos)
             for i in range(len(label)):
                 npos = r(npos)
-            if npos in self.fieldset:
-                self.labels[label] = (pos, npos)
-
+                if npos in self.fieldset:
+                    self.labels[label] = (r(pos), npos, out)
+                    break
 
         self.update_fieldtypes()
 
