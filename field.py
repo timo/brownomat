@@ -144,9 +144,9 @@ class Field(object):
         overflow = 0
         while steps > 0 and overflow < 1000:
             signal = choice(self.signals)
-            possibilities = sum(
-                [[_action_possible(f(signal), self.signals, self.fields[f(signal)])]
-                 for f in [u, d, l, r]], [])
+            possibilities = (
+                _action_possible(f(signal), self.signals, self.fields[f(signal)])
+                 for f in [u, d, l, r])
             possibilities = [p for p in possibilities if p]
 
             if len(possibilities) == 0:
