@@ -304,5 +304,28 @@ class RendererBase(object):
 
 if __name__ == "__main__":
     import field_data
-    testfield = Field(data=field_data.c22join)
+
+    class OutputSignalNotifier(RendererBase):
+        def __init__(self):
+            self.step = 0
+
+        def reset(self):
+            self.step = 0
+
+        def update_labels(self, labels):
+            print(labels)
+            self.labels = {}
+            for (name, (pos, tgtpos, out)) in labels.iteritems():
+                if out:
+                    self.labels[tgtpos] = name
+
+        def add_actions(self, removals, additions):
+            self.step += 1
+            for pos in additions:
+                if pos in self.labels:
+                    print("%10d activated label %s" % (self.step, self.labels[pos]))
+                    del self.labels[pos]
+
+    testfield = Field(data=field_data.xor_drjoin)
+    testfield.attach_renderer(OutputSignalNotifier())
     testfield.step(1000000)
