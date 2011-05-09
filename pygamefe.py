@@ -4,6 +4,7 @@ import pygame
 import field
 from time import sleep
 import field_data
+from random import choice
 
 pxs = 10
 
@@ -106,6 +107,10 @@ class PyGameFrontend(object):
         self.field = field.Field(data=field_data.xor_drjoin)
         self.renderer = PyGameSurfaceRenderer()
         self.field.attach_renderer(self.renderer)
+        self.reset_inputs()
+
+    def reset_inputs(self):
+        self.field.reset([choice(["a0", "a1"]), choice(["b0", "b1"])])
 
     def mainloop(self):
         running = True
@@ -119,7 +124,7 @@ class PyGameFrontend(object):
                     if event.key == pygame.K_SPACE:
                         pause = not pause
                     elif event.key == pygame.K_r:
-                        self.field.reset()
+                        self.reset_inputs()
             if not pause:
                 self.field.step()
             if self.renderer.is_picture_dirty():

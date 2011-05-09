@@ -101,6 +101,7 @@ class Field(object):
     bounds = BBox(0, 0, 1, 1)
     renderers = []
     directions = list(permutations([u, d, l, r]))
+    inputs = []
 
     def __init__(self, data=None, filename=None):
         if filename:
@@ -110,12 +111,14 @@ class Field(object):
     def __str__(self):
         return "\n".join(field_to_stringlist(self.bounds, self.fieldset, self.signals, self.labels))
 
-    def reset(self):
+    def reset(self, inputs):
+        self.inputs = inputs
+        signals_to_set = [pos for (label, (lpos, pos, out)) in self.labels.iteritems() if label in inputs]
         for renderer in self.renderers:
-            renderer.add_actions(self.signals, self.start_out_signals)
-        self.signals = self.start_out_signals
+            renderer.add_actions(self.signals, self.start_out_signals + signals_to_set)
+        self.signals = self.start_out_signals + signals_to_set
         for renderer in self.renderers:
-            renderer.reset()
+            renderer.reset(inputs)
 
     def read_data(self, data, offset=(0, 0)):
         xo, yo = offset
@@ -242,6 +245,7 @@ class Field(object):
         renderer.update_labels(self.labels)
         renderer.update_field(self.fieldset)
         renderer.add_actions(frozenset(), self.signals)
+        renderer.reset(self.inputs)
 
 def field_to_stringlist(bounds, fields, signals, labels={}):
     #fields_list = list(fields)
@@ -304,7 +308,7 @@ class RendererBase(object):
     def refresh_picture(self):
         """refresh the picture somehow"""
 
-    def reset(self):
+    def reset(self, inputs):
         """the field has been reset
 
         this will be called after add_action has been called with all old
@@ -314,18 +318,23 @@ if __name__ == "__main__":
     import field_data
 
     class OutputSignalNotifier(RendererBase):
+        activation = lambda: None
+        labels = {}
         def __init__(self):
             self.step = 0
+            self.signals = 0
 
-        def reset(self):
+        def reset(self, inputs):
             self.step = 0
+            self.signals = len(inputs)
+            self.update_labels(self.all_labels)
 
         def update_labels(self, labels):
-            print(labels)
             self.labels = {}
             for (name, (pos, tgtpos, out)) in labels.iteritems():
                 if out:
                     self.labels[tgtpos] = name
+            self.all_labels = labels.copy()
 
         def add_actions(self, removals, additions):
             self.step += 1
@@ -333,11 +342,20 @@ if __name__ == "__main__":
                 if pos in self.labels:
                     print("%10d activated label %s" % (self.step, self.labels[pos]))
                     del self.labels[pos]
+                    self.signals -= 1
+                    if self.signals == 0:
+                        self.activation()
 
     testfield = Field(data=field_data.xor_drjoin)
-    testfield.attach_renderer(OutputSignalNotifier())
+    notifier = OutputSignalNotifier()
+    def activation():
+        testfield.reset([choice(["a0", "a1"]), choice(["b0", "b1"])])
+    notifier.activation = activation
+    activation()
+    testfield.attach_renderer(notifier)
     try:
-        testfield.step(1000000)
+        for step in range(1000000):
+            testfield.step()
     except KeyboardInterrupt:
         print(testfield)
         raise
