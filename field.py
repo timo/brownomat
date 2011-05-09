@@ -2,6 +2,7 @@ from __future__ import print_function
 from random import choice
 from collections import namedtuple, defaultdict
 from itertools import permutations
+import string
 
 def iterate(iterable):
     num = 0
@@ -95,9 +96,11 @@ class Field(object):
     fieldset = frozenset()
     fields = defaultdict(lambda: None)
     signals = []
+    labels = {}
     bounds = BBox(0, 0, 1, 1)
     renderers = []
     directions = list(permutations([u, d, l, r]))
+
     def __init__(self, data=None, filename=None):
         if filename:
             data = open(filename).read()
@@ -109,10 +112,16 @@ class Field(object):
 
         fieldelems = []
 
-        l, u, r, d = self.bounds
+        bound_l, bound_u, bound_r, bound_d = self.bounds
+
+        labels = []
+        inside_label = 0
 
         for py, line in iterate(self.field):
             for px, char in iterate(line):
+                if inside_label > 0:
+                    inside_label -= 1
+                    continue
                 x = px + xo
                 y = py + yo
                 if char == "O":
@@ -120,18 +129,43 @@ class Field(object):
                     char = "#"
                 if char == "#":
                     fieldelems.append((x, y))
-                    if x < l:
-                        l = x
-                    elif x > r:
-                        r = x
-                    if y < u:
-                        u = y
-                    elif y > d:
-                        d = y
+                    if x < bound_l:
+                        bound_l = x
+                    elif x > bound_r:
+                        bound_r = x
+                    if y < bound_u:
+                        bound_u = y
+                    elif y > bound_d:
+                        bound_d = y
+                elif char == " ":
+                    continue
+                elif char in string.lowercase or char in string.uppercase:
+                    linerest = line[px:]
+                    label = ""
+                    for char in linerest:
+                        if char in string.lowercase + string.uppercase + string.digits + "'":
+                            label += char
+                        else:
+                            break
+                    inside_label = len(label)
+                    labels.append(((px, py), label))
 
-        self.bounds = BBox(l=l, r=r, u=u, d=d)
+        self.bounds = BBox(l=bound_l, r=bound_r, u=bound_u, d=bound_d)
 
         self.fieldset = frozenset(self.fieldset.union(fieldelems))
+
+        for (pos, label) in labels:
+            # find the nearest piece of wire.
+            for direction in [u, lambda pos: l(l(pos)), d]:
+                if direction(pos) in self.fieldset:
+                    self.labels[label] = (pos, direction(pos))
+                    break
+            npos = r(pos)
+            for i in range(len(label)):
+                npos = r(npos)
+            if npos in self.fieldset:
+                self.labels[label] = (pos, npos)
+
 
         self.update_fieldtypes()
 
@@ -187,6 +221,7 @@ class Field(object):
     def attach_renderer(self, renderer):
         self.renderers.append(renderer)
         renderer.update_bounds(self.bounds)
+        renderer.update_labels(self.labels)
         renderer.update_field(self.fieldset)
         renderer.add_actions(frozenset(), self.signals)
 
