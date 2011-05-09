@@ -1,12 +1,20 @@
 from __future__ import print_function
 from random import choice
 from collections import namedtuple, defaultdict
+from itertools import permutations
 
 def iterate(iterable):
     num = 0
     for item in iterable:
         yield num, item
         num += 1
+
+def first_true(iterable):
+    for item in iterable:
+        if item:
+            return item
+    return None
+
 
 BBox = namedtuple("BBox", "l, u, r, d")
 
@@ -89,6 +97,7 @@ class Field(object):
     signals = []
     bounds = BBox(0, 0, 1, 1)
     renderers = []
+    directions = list(permutations([u, d, l, r]))
     def __init__(self, data=None, filename=None):
         if filename:
             data = open(filename).read()
@@ -139,23 +148,20 @@ class Field(object):
                     self.fields[r(field)] = "rotate"
 
     def step(self, steps=1):
-        #print "\n".join(field_to_stringlist(self.bounds, self.fieldset, self.signals))
-        #print
-        #print
         overflow = 0
         while steps > 0 and overflow < 1000:
-            signal = choice(self.signals)
-            possibilities = (
-                _action_possible(f(signal), self.signals, self.fields[f(signal)])
-                 for f in [u, d, l, r])
-            possibilities = [p for p in possibilities if p]
+            direction_order = choice(self.directions)
 
-            if len(possibilities) == 0:
+            signal = choice(self.signals)
+            action = first_true(
+                _action_possible(f(signal), self.signals, self.fields[f(signal)])
+                 for f in direction_order)
+
+            if not action:
                 overflow += 1
                 continue
             else:
                 steps -= 1
-            action = choice(possibilities)
 
             before_count = len(self.signals)
 
@@ -172,7 +178,6 @@ class Field(object):
                 raise Exception("this action just changed the number of signals.")
 
 
-            action = action[:2]
             for renderer in self.renderers:
                 renderer.add_actions(*action)
 
