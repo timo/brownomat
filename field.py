@@ -362,10 +362,8 @@ if __name__ == "__main__":
     try:
         for step in range(1000000):
             testfield.step()
-    except KeyboardInterrupt:
-        print(testfield)
-        raise
     finally:
+        print(testfield)
         times = {}
         rounds = {}
         results = {}
