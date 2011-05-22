@@ -384,7 +384,9 @@ class MovementPolicyBase(object):
             return None
 
     def get_choice(self):
-        """returns the chosen possibility"""
+        """returns the chosen possibility.
+
+        May return None, if a choice is not yet ready"""
         return self.choice
 
 if __name__ == "__main__":
