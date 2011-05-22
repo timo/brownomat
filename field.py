@@ -97,16 +97,24 @@ class Field(object):
     fields = defaultdict(lambda: None)
     signals = []
     start_out_signals = []
+    signal_permutations = []
     labels = {}
     bounds = BBox(0, 0, 1, 1)
     renderers = []
     directions = list(permutations([u, d, l, r]))
     inputs = []
+    policy = None
 
-    def __init__(self, data=None, filename=None):
+    def __init__(self, data=None, filename=None, debug=False):
         if filename:
             data = open(filename).read()
         self.read_data(data)
+        self.policy = MovementPolicyBase()
+
+        if debug:
+            self.apply_action = self.apply_action_debug
+        else:
+            self.apply_action = self.apply_action_fast
 
     def __str__(self):
         return "\n".join(field_to_stringlist(self.bounds, self.fieldset, self.signals, self.labels))
@@ -119,6 +127,7 @@ class Field(object):
         self.signals = self.start_out_signals + signals_to_set
         for renderer in self.renderers:
             renderer.reset(inputs)
+        self.signal_permutations = list(permutations(range(len(inputs))))
 
     def read_data(self, data, offset=(0, 0)):
         xo, yo = offset
@@ -194,7 +203,7 @@ class Field(object):
         self.fields = defaultdict(lambda: None)
         for field in self.fieldset:
             self.fields[field] = _field_type(field, self.fieldset)
-            
+
             # also catch empty fields that are surrounded by other fields.
             # we can choose an arbitrary direction for all fields, that we look for
             # empty, surrounded fields in.
@@ -202,42 +211,52 @@ class Field(object):
                 if _field_type(r(field), self.fieldset) == "rotate":
                     self.fields[r(field)] = "rotate"
 
-    def step(self, steps=1):
-        overflow = 0
-        while steps > 0 and overflow < 1000:
-            direction_order = choice(self.directions)
+    def apply_action_debug(self, action):
+        before_count = len(self.signals)
 
-            signal = choice(self.signals)
-            action = first_true(
-                _action_possible(f(signal), self.signals, self.fields[f(signal)])
-                 for f in direction_order)
+        self.apply_action_fast(action)
 
-            if not action:
-                overflow += 1
-                continue
-            else:
-                steps -= 1
+        after_count = len(self.signals)
 
-            before_count = len(self.signals)
-
-            self.signals = set(self.signals) - frozenset(action[0])
-            self.signals = self.signals | frozenset(action[1])
-            self.signals = list(self.signals)
-
-            after_count = len(self.signals)
-
-            if after_count != before_count:
-                print("\n".join(field_to_stringlist(self.bounds, self.fieldset, self.signals)))
-                print()
-                print(action)
-                raise Exception("this action just changed the number of signals.")
+        if after_count != before_count:
+            print("\n".join(field_to_stringlist(self.bounds, self.fieldset, self.signals)))
+            print()
+            print(action)
+            raise Exception("this action just changed the number of signals.")
 
 
-            for renderer in self.renderers:
-                renderer.add_actions(*action)
+    def apply_action_fast(self, action):
+        self.signals = set(self.signals) - frozenset(action[0])
+        self.signals = self.signals | frozenset(action[1])
+        self.signals = list(self.signals)
 
-        if steps > 0:
-            raise Exception("could not find any actions at all!")
+    def choose_signal_order(self):
+        indices = choice(self.signal_permutations)
+        for index in indices:
+            yield self.signals[index]
+
+    def all_choices(self):
+        direction_order = choice(self.directions)
+        for signal in self.choose_signal_order():
+            for direction in direction_order:
+                target = direction(signal)
+                action = _action_possible(target, self.signals, self.fields[target])
+                if action:
+                    yield (target, action)
+
+    def step(self):
+        self.policy.set_possibilities(self.all_choices())
+        action = self.policy.get_choice()
+
+        if not action:
+            return False
+
+        self.apply_action(action)
+
+        for renderer in self.renderers:
+            renderer.add_actions(*action)
+
+        #return action
 
     def attach_renderer(self, renderer):
         self.renderers.append(renderer)
@@ -348,6 +367,25 @@ class OutputSignalNotifier(RendererBase):
                 if self.signals == 0:
                     self.results.append((self.step, self.inputs, self.triggered))
                     self.activation()
+
+
+class MovementPolicyBase(object):
+    def __init__(self, *args):
+        """initialise the policy somehow"""
+
+    def set_possibilities(self, possibilities):
+        """gets passed a randomized generator of possible signal movement operations.
+
+        Each operation is a tuple of the field, that can fire and a tuple
+        of lists of removals and additions"""
+        try:
+            self.choice = possibilities.next()[1]
+        except IndexError:
+            return None
+
+    def get_choice(self):
+        """returns the chosen possibility"""
+        return self.choice
 
 if __name__ == "__main__":
     import field_data
