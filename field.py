@@ -314,43 +314,43 @@ class RendererBase(object):
         this will be called after add_action has been called with all old
         and new signal positions."""
 
+class OutputSignalNotifier(RendererBase):
+    activation = lambda: None
+    labels = {}
+    triggered = []
+    inputs = []
+    results = []
+    def __init__(self):
+        self.step = 0
+        self.signals = 0
+
+    def reset(self, inputs):
+        self.inputs = inputs
+        self.step = 0
+        self.signals = len(inputs)
+        self.update_labels(self.all_labels)
+
+    def update_labels(self, labels):
+        self.labels = {}
+        for (name, (pos, tgtpos, out)) in labels.iteritems():
+            if out:
+                self.labels[tgtpos] = name
+        self.all_labels = labels.copy()
+        self.triggered = []
+
+    def add_actions(self, removals, additions):
+        self.step += 1
+        for pos in additions:
+            if pos in self.labels:
+                self.triggered.append(self.labels[pos])
+                del self.labels[pos]
+                self.signals -= 1
+                if self.signals == 0:
+                    self.results.append((self.step, self.inputs, self.triggered))
+                    self.activation()
+
 if __name__ == "__main__":
     import field_data
-
-    class OutputSignalNotifier(RendererBase):
-        activation = lambda: None
-        labels = {}
-        triggered = []
-        inputs = []
-        results = []
-        def __init__(self):
-            self.step = 0
-            self.signals = 0
-
-        def reset(self, inputs):
-            self.inputs = inputs
-            self.step = 0
-            self.signals = len(inputs)
-            self.update_labels(self.all_labels)
-
-        def update_labels(self, labels):
-            self.labels = {}
-            for (name, (pos, tgtpos, out)) in labels.iteritems():
-                if out:
-                    self.labels[tgtpos] = name
-            self.all_labels = labels.copy()
-            self.triggered = []
-
-        def add_actions(self, removals, additions):
-            self.step += 1
-            for pos in additions:
-                if pos in self.labels:
-                    self.triggered.append(self.labels[pos])
-                    del self.labels[pos]
-                    self.signals -= 1
-                    if self.signals == 0:
-                        self.results.append((self.step, self.inputs, self.triggered))
-                        self.activation()
 
     testfield = Field(data=field_data.xor_drjoin)
     notifier = OutputSignalNotifier()
