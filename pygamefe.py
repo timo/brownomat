@@ -16,7 +16,7 @@ class PyGameSurfaceRenderer(field.RendererBase):
     fontcol = pygame.Color("black")
     incol = pygame.Color("red")
     outcol = pygame.Color("blue")
-    
+
     def __adjust(self, (x, y)):
         return (x - self.bounds.l * pxs, y - self.bounds.u * pxs)
 
@@ -30,6 +30,29 @@ class PyGameSurfaceRenderer(field.RendererBase):
                 pxs * (0.2 if xdiff != 0 else 1),
                 pxs * (0.2 if ydiff != 0 else 1))
 
+    def __draw_highlight_block(self, pos, hltype="border" or "fill", color=pygame.Color("red")):
+        orect = self.__block_to_rect(pos)
+        if True or hltype == "fill":
+            self.resultsurf.fill(color, orect)
+        else:
+            tsr = (pxs - 2, pxs - 2)
+            ts = pygame.Surface(tsr)
+            irect = orect.inflate(-2, -2)
+            ts.blit(self.resultsurf, (0, 0), irect)
+            self.resultsurf.fill(color, orect)
+            self.resultsurf.blit(ts, irect)
+            del ts
+
+    def highlight_block(self, pos, hltype="border" or "fill", color=pygame.Color("red")):
+        self.annotations.append((pos, hltype, color))
+
+    def clear_highlights(self):
+        self.annotations = []
+
+    def __update_annotations(self):
+        for (pos, hlt, col) in self.annotations:
+            self.__draw_highlight_block(pos, hlt, col)
+
     def __init__(self, parent_surface=None, offset=None):
         self.font = pygame.font.SysFont("bitstreamverasans", pxs)
         self.update_bounds(field.BBox(0, 0, 20, 20))
@@ -40,7 +63,7 @@ class PyGameSurfaceRenderer(field.RendererBase):
         self.background_redraw = True
         self.update_labels({})
         self.update_field(frozenset())
-        self.dirty_blocks = []
+        self.annotations = []
 
         if parent_surface:
             self.surface_factory = lambda rect: parent_surface.subsurface(offset + rect)
@@ -80,6 +103,8 @@ class PyGameSurfaceRenderer(field.RendererBase):
         self.resultsurf = self.surface_factory(rect)
         self.resultsurf.blit(self.bgsurf, (0, 0))
 
+        self.__update_annotations()
+
         self.background_redraw = False
         self.nice_redraw = True
 
@@ -93,30 +118,14 @@ class PyGameSurfaceRenderer(field.RendererBase):
         self.removals = self.removals.union(removals)
 
     def is_picture_dirty(self):
-        return self.nice_redraw or self.background_redraw or self.dirty_blocks
-
-    def highlight_block(self, pos, hltype="border" or "fill", color=pygame.Color("red")):
-        orect = self.__block_to_rect(pos)
-        if hltype == "fill":
-            self.resultsurf.fill(color, orect)
-        else:
-            tsr = (pxs - 2, pxs - 2)
-            ts = pygame.Surface(tsr)
-            irect = orect.inflate(-2, -2)
-            ts.blit(self.resultsurf, (0, 0), irect)
-            self.resultsurf.fill(color, orect)
-            self.resultsurf.blit(ts, irect)
-            del ts
-        self.dirty_blocks.append(pos)
+        return self.nice_redraw or self.background_redraw
 
     def refresh_picture(self):
         if self.background_redraw:
             self.__redraw_background()
-        for x, y in chain(self.removals, self.dirty_blocks):
+        for x, y in chain(self.removals):
             rect = pygame.Rect(*self.__adjust((x * 10, y * 10)) + (10, 10))
             self.resultsurf.blit(self.bgsurf, rect, rect)
-
-        self.dirty_blocks = []
 
         self.removals = set()
 
@@ -125,6 +134,9 @@ class PyGameSurfaceRenderer(field.RendererBase):
                     pygame.Rect(*self.__adjust((x * 10, y * 10)) + (10, 10)))
 
         self.additions = set()
+
+        self.__update_annotations()
+
         self.nice_redraw = False
 
 class PyGameInteractionPolicy(field.MovementPolicyBase):
@@ -135,6 +147,7 @@ class PyGameInteractionPolicy(field.MovementPolicyBase):
 
     def __init__(self):
         self._proxy = field.MovementPolicyBase()
+        self.annotations = []
 
     def set_possibilities(self, possibilities):
         l = list(possibilities)
@@ -159,9 +172,12 @@ class PyGameFrontend(object):
         self.screen = pygame.display.set_mode((800, 600))
         self.setup_field()
 
+        self.selected_field = None
+        self.signals_to_jump = []
+
     def setup_field(self):
         self.field = field.Field(data=field_data.xor_drjoin, policy=self.interactor)
-        self.renderer = PyGameSurfaceRenderer(self.screen, self.canvas_offset)
+        self.renderer = PyGameSurfaceRenderer()
         self.field.attach_renderer(self.renderer)
         self.reset_inputs()
 
@@ -176,16 +192,12 @@ class PyGameFrontend(object):
 
     def highlight_signals(self, signals):
         for signal in signals:
-            self.renderer.highlight_block(signal)
+            self.renderer.highlight_block(signal, color=pygame.Color("blue"))
         print("signals drawn", signals)
 
     def mainloop(self):
         running = True
         pause = False
-        
-        selected_field = None
-        signals_to_jump = []
-        do_step = False
 
         while running:
             for event in pygame.event.get():
@@ -202,52 +214,59 @@ class PyGameFrontend(object):
                     elif event.key == pygame.K_r:
                         self.reset_inputs()
                 elif event.type == pygame.MOUSEBUTTONUP:
-                    clicked_field = (event.pos[0] - self.canvas_offset[0],
-                                     event.pos[1] - self.canvas_offset[1])
-                    clicked_field = (clicked_field[0] / pxs,
-                                     clicked_field[1] / pxs)
-                    print(clicked_field, "clicked")
-                    if selected_field:
-                        # the user could choose the signal to move to the target
-                        choice = [(field, (removals, additions))
-                              for (field, (removals, additions))
-                               in signals_to_jump
-                               if field == clicked_field]
-                        if len(choice) == 1:
-                            self.interaotcr.choice = choice[0][1]
-                            do_step = True
-                        signals_to_jump = []
-                        selected_field = None
-                    else:
-                        print(self.interactor.choices)
-                        signals_to_jump = [(field, (removals, additions))
-                                       for (field, (removals, additions))
-                                        in self.interactor.choices
-                                        if clicked_field in additions]
-                        print(signals_to_jump, "possibilities")
-                        if len(signals_to_jump) == 1:
-                            # if the selection is obvious, choose.
-                            self.interactor.choice = signals_to_jump[0][1]
-                            print(self.interactor.choice, "chosen")
-                            do_step = True
-                        elif len(signals_to_jump) > 1:
-                            # allow the user to select the source signal
-                            selected_field = clicked_field
-                            self.highlight_signals([s[0] for s in signals_to_jump])
-                    if do_step:
-                        self.field.halfstep()
-                        self.field.halfstep()
-                        self.renderer.refresh_picture()
-                        self.draw_choices()
-                    print("mouse click handled")
-                    print()
+                    self.handle_click(event)
             if not pause:
                 self.field.step()
                 if self.renderer.is_picture_dirty():
                     self.renderer.refresh_picture()
+                    self.screen.blit(self.renderer.resultsurf, self.canvas_offset)
 
             pygame.display.flip()
             sleep(((pygame.mouse.get_pos()[1] + 1) / 600.) ** 2)
+
+    def handle_click(self, event):
+        clicked_field = (event.pos[0] - self.canvas_offset[0],
+                         event.pos[1] - self.canvas_offset[1])
+        clicked_field = (clicked_field[0] / pxs,
+                         clicked_field[1] / pxs)
+        print(clicked_field, "clicked")
+        do_step = False
+        if self.selected_field:
+            # the user could choose the signal to move to the target
+            choice = [(field, (removals, additions))
+                  for (field, (removals, additions))
+                   in self.signals_to_jump
+                   if field == clicked_field]
+            if len(choice) == 1:
+                self.interaotcr.choice = choice[0][1]
+                do_step = True
+            signals_to_jump = []
+            self.selected_field = None
+        else:
+            print(self.interactor.choices)
+            signals_to_jump = [(field, (removals, additions))
+                           for (field, (removals, additions))
+                            in self.interactor.choices
+                            if clicked_field in additions]
+            print(signals_to_jump, "possibilities")
+            if len(signals_to_jump) == 1:
+                # if the selection is obvious, choose.
+                self.interactor.choice = signals_to_jump[0][1]
+                print(self.interactor.choice, "chosen")
+                do_step = True
+            elif len(signals_to_jump) > 1:
+                # allow the user to select the source signal
+                self.selected_field = clicked_field
+                self.renderer.clear_highlights()
+                self.highlight_signals([s[0] for s in signals_to_jump])
+        if do_step:
+            self.field.halfstep()
+            self.field.halfstep()
+            self.renderer.refresh_picture()
+            self.draw_choices()
+            self.screen.blit(self.renderer.resultsurf, self.canvas_offset)
+        print("mouse click handled")
+        print()
 
 
 if __name__ == "__main__":
