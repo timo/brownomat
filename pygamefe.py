@@ -32,7 +32,7 @@ class PyGameSurfaceRenderer(field.RendererBase):
 
     def __draw_highlight_block(self, pos, hltype="border" or "fill", color=pygame.Color("red")):
         orect = self.__block_to_rect(pos)
-        if True or hltype == "fill":
+        if hltype == "fill":
             self.resultsurf.fill(color, orect)
         else:
             tsr = (pxs - 2, pxs - 2)
@@ -47,11 +47,22 @@ class PyGameSurfaceRenderer(field.RendererBase):
         self.annotations.append((pos, hltype, color))
 
     def clear_highlights(self):
+        adds = []
+        rems = []
+        for (pos, _, _) in self.annotations:
+            if pos in self.signals:
+                adds.append(pos)
+            else:
+                rems.append(pos)
+        self.removals = self.removals.union(rems)
+        self.additions = self.additions.union(adds)
         self.annotations = []
+        print("highlights cleared")
 
     def __update_annotations(self):
         for (pos, hlt, col) in self.annotations:
             self.__draw_highlight_block(pos, hlt, col)
+        print("annotations updated")
 
     def __init__(self, parent_surface=None, offset=None):
         self.font = pygame.font.SysFont("bitstreamverasans", pxs)
@@ -83,6 +94,7 @@ class PyGameSurfaceRenderer(field.RendererBase):
         self.background_redraw = True
 
     def __redraw_background(self):
+        print("redrawing background")
         rect = ((self.bounds.r - self.bounds.l)*pxs + pxs,
                 (self.bounds.d - self.bounds.u)*pxs + pxs)
         self.bgsurf = pygame.Surface(rect)
@@ -103,6 +115,7 @@ class PyGameSurfaceRenderer(field.RendererBase):
         self.resultsurf = self.surface_factory(rect)
         self.resultsurf.blit(self.bgsurf, (0, 0))
 
+        # XXX: is this needed here? or just in refresh_picture?
         self.__update_annotations()
 
         self.background_redraw = False
@@ -121,6 +134,7 @@ class PyGameSurfaceRenderer(field.RendererBase):
         return self.nice_redraw or self.background_redraw
 
     def refresh_picture(self):
+        print("refreshing picture")
         if self.background_redraw:
             self.__redraw_background()
         for x, y in chain(self.removals):
@@ -209,8 +223,9 @@ class PyGameFrontend(object):
                         self.interactor.delegate = not pause
                         if pause:
                             self.field.halfstep()
-                            self.renderer.refresh_picture()
+                            self.renderer.clear_highlights()
                             self.draw_choices()
+                            self.renderer.refresh_picture()
                     elif event.key == pygame.K_r:
                         self.reset_inputs()
                 elif event.type == pygame.MOUSEBUTTONUP:
@@ -238,10 +253,11 @@ class PyGameFrontend(object):
                    in self.signals_to_jump
                    if field == clicked_field]
             if len(choice) == 1:
-                self.interaotcr.choice = choice[0][1]
+                self.interactor.choice = choice[0][1]
                 do_step = True
             signals_to_jump = []
             self.selected_field = None
+            self.renderer.clear_highlights()
         else:
             print(self.interactor.choices)
             signals_to_jump = [(field, (removals, additions))
@@ -255,9 +271,9 @@ class PyGameFrontend(object):
                 print(self.interactor.choice, "chosen")
                 do_step = True
             elif len(signals_to_jump) > 1:
+                self.renderer.clear_highlights()
                 # allow the user to select the source signal
                 self.selected_field = clicked_field
-                self.renderer.clear_highlights()
                 self.highlight_signals([s[0] for s in signals_to_jump])
         if do_step:
             self.field.halfstep()
