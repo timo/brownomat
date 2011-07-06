@@ -6,6 +6,7 @@ from time import sleep
 import field_data
 from random import choice
 from itertools import cycle
+from tikz import TikzRenderer
 
 add_col = lambda color, (r, g, b): pygame.Color(color.r + r, color.g + g, color.b + b)
 pxs = 10
@@ -191,6 +192,7 @@ class PyGameFrontend(object):
         running = True
         pause = False
         action_blink = False
+        recorder = None
 
         while running:
             for event in pygame.event.get():
@@ -205,7 +207,8 @@ class PyGameFrontend(object):
                         else:
                             self.restore_snapshot()
                     elif event.key == pygame.K_r:
-                        self.reset_inputs()
+                        if not pause:
+                            self.reset_inputs()
                     elif event.key == pygame.K_n:
                         if pause:
                             self.restore_snapshot()
@@ -216,6 +219,16 @@ class PyGameFrontend(object):
                             self.interactor.choice = self.selected_choice
                             self.field.step()
                             self.next_paused_step()
+                    elif event.key == pygame.K_1:
+                        if recorder:
+                            self.field.remove_renderer(recorder)
+                            del recorder
+                        recorder = TikzRenderer()
+                        self.field.attach_renderer(recorder)
+                    elif event.key == pygame.K_2:
+                        if recorder:
+                            self.field.remove_renderer(recorder)
+                            del recorder
 
             if not pause:
                 self.field.step()

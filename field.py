@@ -278,6 +278,9 @@ class Field(object):
         renderer.add_actions(frozenset(), self.signals)
         renderer.reset(self.inputs)
 
+    def remove_renderer(self, renderer):
+        self.renderers.remove(renderer)
+
 def field_to_stringlist(bounds, fields, signals, labels={}):
     #fields_list = list(fields)
     # sort by x, then by y
