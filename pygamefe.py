@@ -5,7 +5,9 @@ import field
 from time import sleep
 import field_data
 from random import choice
+from itertools import cycle
 
+add_col = lambda color, (r, g, b): pygame.Color(color.r + r, color.g + g, color.b + b)
 pxs = 10
 
 class PyGameSurfaceRenderer(field.RendererBase):
@@ -103,11 +105,15 @@ class PyGameSurfaceRenderer(field.RendererBase):
         self.removals = set()
 
         for x, y in self.additions:
-            self.resultsurf.fill(self.signalcol,
-                    pygame.Rect(*self.__adjust((x * 10, y * 10)) + (10, 10)))
+            self.draw_block((x, y), self.signalcol)
 
         self.additions = set()
         self.nice_redraw = False
+
+    def draw_block(self, (x, y), color):
+        self.resultsurf.fill(color,
+                pygame.Rect(*self.__adjust((x * 10, y * 10)) + (10, 10)))
+
 
 class PyGameInteractionPolicy(field.MovementPolicyBase):
     choices = []
@@ -126,7 +132,7 @@ class PyGameInteractionPolicy(field.MovementPolicyBase):
     def get_choice(self):
         if self.delegate:
             return self._proxy.get_choice()
-        return self.choice
+        return self.choice[1]
 
     def reset(self):
         self._proxy.reset()
@@ -140,6 +146,9 @@ class PyGameFrontend(object):
         self.interactor = PyGameInteractionPolicy()
         self.screen = pygame.display.set_mode((800, 600))
         self.setup_field()
+        self.choices = cycle([(None, (None, None))])
+        self.selected_choice = self.choices.next()
+        self.backup_surf = None
 
     def setup_field(self):
         self.field = field.Field(data=field_data.xor_drjoin, policy=self.interactor)
@@ -150,9 +159,38 @@ class PyGameFrontend(object):
     def reset_inputs(self):
         self.field.reset([choice(["a0", "a1"]), choice(["b0", "b1"])])
 
+    def snapshot(self):
+        self.backup_surf = self.renderer.resultsurf.copy()
+
+    def restore_snapshot(self):
+        self.renderer.resultsurf.blit(self.backup_surf, (0, 0))
+
+    signal_removal_color = add_col(PyGameSurfaceRenderer.signalcol,
+                                   (100, 0, 0))
+    signal_addition_color = add_col(PyGameSurfaceRenderer.signalcol,
+                                   (0, 0, 100))
+
+    def draw_selected_action(self):
+        field, (removals, additions) = self.selected_choice
+        for pos in removals:
+            self.renderer.draw_block(pos, self.signal_removal_color)
+        for pos in additions:
+            self.renderer.draw_block(pos, self.signal_addition_color)
+
+    def next_paused_step(self):
+        self.field.halfstep()
+        if self.backup_surf:
+            self.restore_snapshot()
+        self.renderer.refresh_picture()
+        self.snapshot()
+        self.choices = cycle(self.interactor.choices)
+        self.selected_choice = self.choices.next()
+        self.draw_selected_action()
+
     def mainloop(self):
         running = True
         pause = False
+        action_blink = False
 
         while running:
             for event in pygame.event.get():
@@ -163,14 +201,32 @@ class PyGameFrontend(object):
                         pause = not pause
                         self.interactor.delegate = not pause
                         if pause:
-                            self.field.halfstep()
-                            self.renderer.refresh_picture()
+                            self.next_paused_step()
+                        else:
+                            self.restore_snapshot()
                     elif event.key == pygame.K_r:
                         self.reset_inputs()
+                    elif event.key == pygame.K_n:
+                        if pause:
+                            self.restore_snapshot()
+                            self.selected_choice = self.choices.next()
+                            self.draw_selected_action()
+                    elif event.key == pygame.K_t:
+                        if pause:
+                            self.interactor.choice = self.selected_choice
+                            self.field.step()
+                            self.next_paused_step()
+
             if not pause:
                 self.field.step()
                 if self.renderer.is_picture_dirty():
                     self.renderer.refresh_picture()
+            else:
+                if action_blink:
+                    self.restore_snapshot()
+                else:
+                    self.draw_selected_action()
+                action_blink = not action_blink
 
             pygame.display.flip()
             sleep(((pygame.mouse.get_pos()[1] + 1) / 600.) ** 2)
