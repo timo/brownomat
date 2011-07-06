@@ -19,7 +19,17 @@ class PyGameSurfaceRenderer(field.RendererBase):
     def __adjust(self, (x, y)):
         return (x - self.bounds.l * pxs, y - self.bounds.u * pxs)
 
-    def __init__(self):
+    def __block_to_rect(self, (x, y)):
+        return pygame.Rect(*self.__adjust((x * pxs, y * pxs)) + (pxs, pxs))
+
+    def __block_border(self, (x, y), xdiff, ydiff):
+        return pygame.Rect(
+                x * pxs + (pxs * 0.8 if xdiff > 0 else 0),
+                y * pxs + (pxs * 0.8 if ydiff > 0 else 0),
+                pxs * (0.2 if xdiff != 0 else 1),
+                pxs * (0.2 if ydiff != 0 else 1))
+
+    def __init__(self, parent_surface=None, offset=None):
         self.font = pygame.font.SysFont("bitstreamverasans", pxs)
         self.update_bounds(field.BBox(0, 0, 20, 20))
         self.signals = set()
@@ -29,6 +39,11 @@ class PyGameSurfaceRenderer(field.RendererBase):
         self.background_redraw = True
         self.update_labels({})
         self.update_field(frozenset())
+
+        if parent_surface:
+            self.surface_factory = lambda rect: parent_surface.subsurface(offset + rect)
+        else:
+            self.surface_factory = lambda rect: pygame.Surface(rect)
 
     def update_bounds(self, bounds):
         self.bounds = bounds
@@ -43,28 +58,25 @@ class PyGameSurfaceRenderer(field.RendererBase):
         self.background_redraw = True
 
     def __redraw_background(self):
-        self.bgsurf = pygame.Surface(
-                ((self.bounds.r - self.bounds.l)*pxs + pxs,
-                 (self.bounds.d - self.bounds.u)*pxs + pxs))
+        rect = ((self.bounds.r - self.bounds.l)*pxs + pxs,
+                (self.bounds.d - self.bounds.u)*pxs + pxs)
+        self.bgsurf = pygame.Surface(rect)
         self.bgsurf.fill(self.bgcol)
 
-        for x, y in self.field:
+        for field in self.field:
             self.bgsurf.fill(self.fieldcol,
-                    pygame.Rect(*self.__adjust((x * pxs, y * pxs)) + (pxs, pxs)))
+                    self.__block_to_rect(field))
 
         for (label, (pos, tgtpos, out)) in self.labels.iteritems():
             fontsurf = self.font.render(label, True, self.fontcol)
             self.bgsurf.blit(fontsurf, (pos[0] * pxs, pos[1] * pxs))
             xdiff = pos[0] - tgtpos[0]
             ydiff = pos[1] - tgtpos[1]
-            dr = pygame.Rect(
-                tgtpos[0] * pxs + (pxs * 0.8 if xdiff > 0 else 0),
-                tgtpos[1] * pxs + (pxs * 0.8 if ydiff > 0 else 0),
-                pxs * (0.2 if xdiff != 0 else 1),
-                pxs * (0.2 if ydiff != 0 else 1))
+            dr = self.__block_border(tgtpos, xdiff, ydiff)
             self.bgsurf.fill(self.outcol if out else self.incol, dr)
 
-        self.resultsurf = self.bgsurf.copy()
+        self.resultsurf = self.surface_factory(rect)
+        self.resultsurf.blit(self.bgsurf, (0, 0))
 
         self.background_redraw = False
         self.nice_redraw = True
@@ -97,15 +109,41 @@ class PyGameSurfaceRenderer(field.RendererBase):
         self.additions = set()
         self.nice_redraw = False
 
+class PyGameInteractionPolicy(field.MovementPolicyBase):
+    choices = []
+    choice = None
+
+    delegate = True
+
+    def __init__(self):
+        self._proxy = field.MovementPolicyBase()
+
+    def set_possibilities(self, possibilities):
+        l = list(possibilities)
+        self.choices = l
+        self._proxy.set_possibilities(iter(l))
+
+    def get_choice(self):
+        if self.delegate:
+            return self._proxy.get_choice()
+        return self.choice
+
+    def reset(self):
+        self._proxy.reset()
+        self.choices = []
+        self.choice = None
+
 class PyGameFrontend(object):
+    canvas_offset = (20, 20)
     def __init__(self):
         pygame.init()
+        self.interactor = PyGameInteractionPolicy()
         self.screen = pygame.display.set_mode((800, 600))
         self.setup_field()
 
     def setup_field(self):
-        self.field = field.Field(data=field_data.xor_drjoin)
-        self.renderer = PyGameSurfaceRenderer()
+        self.field = field.Field(data=field_data.xor_drjoin, policy=self.interactor)
+        self.renderer = PyGameSurfaceRenderer(self.screen, self.canvas_offset)
         self.field.attach_renderer(self.renderer)
         self.reset_inputs()
 
@@ -123,13 +161,16 @@ class PyGameFrontend(object):
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         pause = not pause
+                        self.interactor.delegate = not pause
+                        if pause:
+                            self.field.halfstep()
+                            self.renderer.refresh_picture()
                     elif event.key == pygame.K_r:
                         self.reset_inputs()
             if not pause:
                 self.field.step()
-            if self.renderer.is_picture_dirty():
-                self.renderer.refresh_picture()
-                self.screen.blit(self.renderer.resultsurf, (20, 20))
+                if self.renderer.is_picture_dirty():
+                    self.renderer.refresh_picture()
 
             pygame.display.flip()
             sleep(((pygame.mouse.get_pos()[1] + 1) / 600.) ** 2)

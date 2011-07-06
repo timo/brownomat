@@ -104,12 +104,16 @@ class Field(object):
     directions = list(permutations([u, d, l, r]))
     inputs = []
     policy = None
+    _step = "enumerate" or "advance"
 
-    def __init__(self, data=None, filename=None, debug=False):
+    def __init__(self, data=None, filename=None, debug=False, policy=None):
         if filename:
             data = open(filename).read()
         self.read_data(data)
-        self.policy = MovementPolicyBase()
+        if not policy:
+            self.policy = MovementPolicyBase()
+        else:
+            self.policy = policy
 
         if debug:
             self.apply_action = self.apply_action_debug
@@ -128,6 +132,10 @@ class Field(object):
         for renderer in self.renderers:
             renderer.reset(inputs)
         self.signal_permutations = list(permutations(range(len(inputs))))
+        self.policy.reset()
+
+    def set_policy(self, policy):
+        self.policy = policy
 
     def read_data(self, data, offset=(0, 0)):
         xo, yo = offset
@@ -244,19 +252,23 @@ class Field(object):
                 if action:
                     yield (target, action)
 
+    def halfstep(self):
+        if self._step == "enumerate":
+            self.policy.set_possibilities(self.all_choices())
+            self._step = "advance"
+        else:
+            action = self.policy.get_choice()
+            if action:
+                self._step = "enumerate"
+                self.apply_action(action)
+                for renderer in self.renderers:
+                    renderer.add_actions(*action)
+
     def step(self):
-        self.policy.set_possibilities(self.all_choices())
-        action = self.policy.get_choice()
-
-        if not action:
-            return False
-
-        self.apply_action(action)
-
-        for renderer in self.renderers:
-            renderer.add_actions(*action)
-
-        #return action
+        """completes the current step."""
+        self.halfstep()
+        if self._step == "advance":
+            self.halfstep()
 
     def attach_renderer(self, renderer):
         self.renderers.append(renderer)
@@ -388,6 +400,10 @@ class MovementPolicyBase(object):
 
         May return None, if a choice is not yet ready"""
         return self.choice
+
+    def reset(self):
+        """the field has been reset. forget all state."""
+        self.choice = None
 
 if __name__ == "__main__":
     import field_data
