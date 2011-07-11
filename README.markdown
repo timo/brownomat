@@ -63,7 +63,9 @@ configuration of the automaton and runs it with a given speed.
 ### Controls
 
     Spacebar        Pause/Resume
-    r               Reset with a random input
+    r               Reset with a random input.
+    n               When paused, select the next action.
+    t               When paused, execute the selected action.
     Mouse up/down   Faster/Slower
 
 Closing the window quits the program.
