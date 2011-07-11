@@ -146,7 +146,7 @@ class PyGameFrontend(object):
         self.fieldtype = fieldtype
         pygame.init()
         self.interactor = PyGameInteractionPolicy()
-        self.screen = pygame.display.set_mode((800, 600))
+        self.screen = pygame.display.set_mode((1024, 768))
         self.setup_field()
         self.choices = cycle([(None, (None, None))])
         self.selected_choice = self.choices.next()
