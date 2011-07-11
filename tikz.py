@@ -36,13 +36,10 @@ class TikzRenderer(RendererBase):
         self.frame = open(path.join(self.name, "%03d.tex" % self.frameno), "w")
         self.collection_file.write(r"\input{%s/%03d.tex}" % (self.name, self.frameno) + "\n")
 
-        self.frame.write(r"""\begin{figure}[h]
-  \centering
-  \begin{tikzpicture}[scale=0.3]""")
+        self.frame.write(r"""\begin{tikzpicture}[scale=0.3]""")
 
     def _close_frame(self):
-        self.frame.write(r"""  \end{tikzpicture}
-\end{figure}""")
+        self.frame.write(r"""  \end{tikzpicture}""")
         self.frame.close()
 
     def update_field(self, fieldset):

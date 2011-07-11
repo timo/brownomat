@@ -126,6 +126,11 @@ class Field(object):
     def reset(self, inputs):
         self.inputs = inputs
         signals_to_set = [pos for (label, (lpos, pos, out)) in self.labels.iteritems() if label in inputs]
+        if len(signals_to_set) != len(inputs):
+            print("the following labels could not be found:")
+            for inp in inputs:
+                if inp not in self.labels:
+                    print("  ", inp)
         for renderer in self.renderers:
             renderer.add_actions(self.signals, self.start_out_signals + signals_to_set)
         self.signals = self.start_out_signals + signals_to_set

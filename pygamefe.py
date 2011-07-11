@@ -4,7 +4,7 @@ import pygame
 import field
 from time import sleep
 import field_data
-from random import choice
+from random import choice, sample
 from itertools import cycle
 from tikz import TikzRenderer
 
@@ -142,7 +142,8 @@ class PyGameInteractionPolicy(field.MovementPolicyBase):
 
 class PyGameFrontend(object):
     canvas_offset = (20, 20)
-    def __init__(self):
+    def __init__(self, fieldtype="csequencer"):
+        self.fieldtype = fieldtype
         pygame.init()
         self.interactor = PyGameInteractionPolicy()
         self.screen = pygame.display.set_mode((800, 600))
@@ -152,13 +153,34 @@ class PyGameFrontend(object):
         self.backup_surf = None
 
     def setup_field(self):
-        self.field = field.Field(data=field_data.xor_drjoin, policy=self.interactor)
+        if self.fieldtype == "xor":
+            data = field_data.xor_drjoin
+        elif self.fieldtype == "drjoin":
+            data = field_data.pathological_drjoin
+        elif self.fieldtype == "csequencer":
+            data = field_data.csequencer
+        else:
+            raise ValueError("invalid fieldtype %s" % self.fieltdype)
+
+        self.field = field.Field(data=data, policy=self.interactor)
+
         self.renderer = PyGameSurfaceRenderer(self.screen, self.canvas_offset)
         self.field.attach_renderer(self.renderer)
         self.reset_inputs()
 
     def reset_inputs(self):
-        self.field.reset([choice(["a0", "a1"]), choice(["b0", "b1"])])
+        if self.fieldtype == "xor":
+            signals = [choice(["a0", "a1"]), choice(["b0", "b1"])]
+        elif self.fieldtype == "drjoin":
+            signals = sample("a0 a1 b0 b1".split(), 2)
+        elif self.fieldtype == "csequencer":
+            signals = choice((["c"], []))
+            signals += sample(["a0", "a1"], choice([1, 2]))
+        else:
+            raise ValueError("invalid fieldtype %s" % self.fieldtype)
+
+        print("setting inputs to %s" % (signals, ))
+        self.field.reset(signals)
 
     def snapshot(self):
         self.backup_surf = self.renderer.resultsurf.copy()
@@ -180,8 +202,6 @@ class PyGameFrontend(object):
 
     def next_paused_step(self):
         self.field.halfstep()
-        if self.backup_surf:
-            self.restore_snapshot()
         self.renderer.refresh_picture()
         self.snapshot()
         self.choices = cycle(self.interactor.choices)
