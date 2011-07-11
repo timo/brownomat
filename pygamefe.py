@@ -158,9 +158,11 @@ class PyGameFrontend(object):
         elif self.fieldtype == "drjoin":
             data = field_data.pathological_drjoin
         elif self.fieldtype == "csequencer":
-            data = field_data.csequencer
+            data = field_data.csequencer_cycle
+        elif self.fieldtype == "c22join":
+            data = field_data.c22join
         else:
-            raise ValueError("invalid fieldtype %s" % self.fieltdype)
+            raise ValueError("invalid fieldtype %s" % self.fieldtype)
 
         self.field = field.Field(data=data, policy=self.interactor)
 
@@ -176,6 +178,8 @@ class PyGameFrontend(object):
         elif self.fieldtype == "csequencer":
             signals = choice((["c"], []))
             signals += sample(["a0", "a1"], choice([1, 2]))
+        elif self.fieldtype == "c22join":
+            signals = [choice(list("ac")), choice(list("bd"))]
         else:
             raise ValueError("invalid fieldtype %s" % self.fieldtype)
 
@@ -266,5 +270,9 @@ class PyGameFrontend(object):
 
 
 if __name__ == "__main__":
-    fe = PyGameFrontend()
+    import sys
+    fieldtype = "drjoin"
+    if len(sys.argv) == 2:
+        fieldtype = sys.argv[1]
+    fe = PyGameFrontend(fieldtype)
     fe.mainloop()

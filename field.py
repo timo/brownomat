@@ -154,6 +154,17 @@ class Field(object):
         inside_label = 0
 
         for py, line in iterate(self.field):
+            if line.startswith("@"):
+                # special case a signal positioning thingie
+                line = line[1:].strip()
+                parts = line.split(" ")
+                print(parts)
+                lx, ly, name = parts
+                out = name.endswith(".")
+                if out:
+                    name = name[:-1]
+                labels.append(((int(lx), int(ly)), name, out))
+                continue
             for px, char in iterate(line):
                 if inside_label > 0:
                     inside_label -= 1
