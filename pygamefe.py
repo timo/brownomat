@@ -9,7 +9,7 @@ from itertools import cycle
 from tikz import TikzRenderer
 
 add_col = lambda color, (r, g, b): pygame.Color(color.r + r, color.g + g, color.b + b)
-pxs = 10
+pxs = 15
 
 class PyGameSurfaceRenderer(field.RendererBase):
     bgcol = pygame.Color("white")
@@ -100,7 +100,7 @@ class PyGameSurfaceRenderer(field.RendererBase):
         if self.background_redraw:
             self.__redraw_background()
         for x, y in self.removals:
-            rect = pygame.Rect(*self.__adjust((x * 10, y * 10)) + (10, 10))
+            rect = pygame.Rect(*self.__adjust((x * pxs, y * pxs)) + (pxs, pxs))
             self.resultsurf.blit(self.bgsurf, rect, rect)
 
         self.removals = set()
@@ -113,7 +113,7 @@ class PyGameSurfaceRenderer(field.RendererBase):
 
     def draw_block(self, (x, y), color):
         self.resultsurf.fill(color,
-                pygame.Rect(*self.__adjust((x * 10, y * 10)) + (10, 10)))
+                pygame.Rect(*self.__adjust((x * pxs, y * pxs)) + (pxs, pxs)))
 
 
 class PyGameInteractionPolicy(field.MovementPolicyBase):
